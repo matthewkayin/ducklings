@@ -179,14 +179,20 @@ int main(){
 
 void render_state(SDL_Renderer* renderer, State* current_state){
 
-    SDL_Rect player_rect;
-    player_rect.x = current_state->player_x * PLAYER_WIDTH;
-    player_rect.y = current_state->player_y * PLAYER_HEIGHT;
-    player_rect.w = PLAYER_WIDTH;
-    player_rect.h = PLAYER_HEIGHT;
-
+    // Render player
     SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+    SDL_Rect player_rect = (SDL_Rect){.x = current_state->player_x * TILE_WIDTH, .y = current_state->player_y * TILE_WIDTH, .w = TILE_WIDTH, .h = TILE_HEIGHT};
     SDL_RenderFillRect(renderer, &player_rect);
+
+    SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);
+    for(int i = 0; i < MAX_DUCK_COUNT; i++){
+
+        if(current_state->duckling_x[i] != -1){
+
+            SDL_Rect chick_rect = (SDL_Rect){.x = current_state->duckling_x[i] * TILE_WIDTH, .y = current_state->duckling_y[i] * TILE_HEIGHT, .w = TILE_WIDTH, .h = TILE_HEIGHT};
+            SDL_RenderFillRect(renderer, &chick_rect);
+        }
+    }
 }
 
 void render_text(SDL_Renderer* renderer, TTF_Font* font, char* text, SDL_Color color, int x, int y){
