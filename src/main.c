@@ -236,8 +236,18 @@ void render_state(SDL_Renderer* renderer, State* current_state){
 
         if(current_state->duckling_x[i] != -1){
 
-            SDL_Rect chick_rect = (SDL_Rect){.x = current_state->duckling_x[i] * TILE_WIDTH, .y = current_state->duckling_y[i] * TILE_HEIGHT, .w = TILE_WIDTH, .h = TILE_HEIGHT};
-            SDL_RenderFillRect(renderer, &chick_rect);
+            SDL_Rect duckling_rect = (SDL_Rect){.x = current_state->duckling_x[i] * TILE_WIDTH, .y = current_state->duckling_y[i] * TILE_HEIGHT, .w = TILE_WIDTH, .h = TILE_HEIGHT};
+            SDL_RenderFillRect(renderer, &duckling_rect);
+        }
+    }
+
+    SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
+    for(int i = 0; i < MAX_BREAD_COUNT; i++){
+
+        if(current_state->bread_x[i] != -1){
+
+            SDL_Rect bread_rect = (SDL_Rect){.x = current_state->bread_x[i] * TILE_WIDTH, .y = current_state->bread_y[i] * TILE_HEIGHT, .w = TILE_WIDTH, .h = TILE_HEIGHT};
+            SDL_RenderFillRect(renderer, &bread_rect);
         }
     }
 }

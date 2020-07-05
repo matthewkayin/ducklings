@@ -14,9 +14,20 @@ State* get_initial_state(){
         initial_state->duckling_y[i] = -1;
         initial_state->duckling_follows[i] = i;
         initial_state->duckling_direction[i] = -1;
+        initial_state->duckling_holds_bread[i] = false;
     }
 
     initial_state->player_last_duckling = -1;
+
+    for(int i = 0; i < MAX_BREAD_COUNT; i++){
+
+        // A bread with position -1, -1 is also non-existant or already collected
+        initial_state->bread_x[i] = -1;
+        initial_state->bread_y[i] = -1;
+    }
+
+    initial_state->map_width = 20;
+    initial_state->map_height = 12;
 
     initial_state->duckling_x[0] = 4;
     initial_state->duckling_y[0] = 2;
@@ -24,6 +35,9 @@ State* get_initial_state(){
     initial_state->duckling_y[1] = 4;
     initial_state->duckling_x[2] = 2;
     initial_state->duckling_y[2] = 4;
+
+    initial_state->bread_x[0] = 6;
+    initial_state->bread_y[0] = 6;
 
     initial_state->previous_state = NULL;
 
@@ -167,13 +181,80 @@ void handle_move(State* current_state, int player_move){
         }
     }
 
-    // If ducklings are waddling, waddle them along
+    // If the ducklings are waddling, waddle them along
     for(int i = 0; i < MAX_DUCK_COUNT; i++){
 
         if(current_state->duckling_x[i] != -1 && current_state->duckling_follows[i] == i && current_state->duckling_direction[i] != -1){
 
             current_state->duckling_x[i] += direction_array[current_state->duckling_direction[i]][0];
             current_state->duckling_y[i] += direction_array[current_state->duckling_direction[i]][1];
+        }
+    }
+
+    // Check and handle the ducklings for invalid movement
+    for(int i = 0; i < MAX_DUCK_COUNT; i++){
+
+        if(current_state->duckling_x[i] != -1 && current_state->duckling_follows[i] == i && current_state->duckling_direction[i] != -1){
+
+            if(!square_in_bounds(current_state, current_state->duckling_x[i], current_state->duckling_y[i])){
+
+                // Turn the direction to the opposite way. Think of this as moving the duckling direction 90 degrees clockwise twice,
+                // using modulus to wrap around if we go above 360 degrees
+                current_state->duckling_direction[i] = (current_state->duckling_direction[i] + 2) % 4;
+
+                // And we have them move once in their opposite direction now that they've turned around
+                current_state->duckling_x[i] += (2 * direction_array[current_state->duckling_direction[i]][0]);
+                current_state->duckling_y[i] += (2 * direction_array[current_state->duckling_direction[i]][1]);
+
+            }else if(current_state->duckling_x[i] == current_state->player_x && current_state->duckling_y[i] == current_state->player_y){
+
+                // Duckling bumped into player, so undo its movement
+                current_state->duckling_x[i] = previous_state->duckling_x[i];
+                current_state->duckling_y[i] = previous_state->duckling_y[i];
+
+            }else{
+
+                // Does duckling bump into another of his kind?
+                for(int j = 0; j < MAX_DUCK_COUNT; j++){
+
+                    if(i == j || current_state->duckling_x[j] == -1){
+
+                        continue;
+                    }
+
+                    if(current_state->duckling_x[i] == current_state->duckling_x[j] && current_state->duckling_y[i] == current_state->duckling_y[j]){
+
+                        // Turn this duckling around
+                        current_state->duckling_direction[i] = (current_state->duckling_direction[i] + 2) % 4;
+                        current_state->duckling_x[i] += (2 * direction_array[current_state->duckling_direction[i]][0]);
+                        current_state->duckling_y[i] += (2 * direction_array[current_state->duckling_direction[i]][1]);
+
+                        // If the duckling we collided into is also a waddler, turn him around too
+                        if(current_state->duckling_follows[j] == j && current_state->duckling_direction[j] != j){
+
+                            current_state->duckling_direction[j] = (current_state->duckling_direction[j] + 2) % 4;
+                            current_state->duckling_x[j] += (2 * direction_array[current_state->duckling_direction[j]][0]);
+                            current_state->duckling_y[j] += (2 * direction_array[current_state->duckling_direction[j]][1]);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Check if a duckling has picked up bread
+    for(int i = 0; i < MAX_DUCK_COUNT; i++){
+
+        if(!current_state->duckling_holds_bread[i]){
+
+            for(int j = 0; j < MAX_BREAD_COUNT; j++){
+
+                if(current_state->bread_x[j] == current_state->duckling_x[i] && current_state->bread_y[j] == current_state->duckling_y[i]){
+
+                    current_state->bread_x[j] = -1;
+                    current_state->duckling_holds_bread[i] = true;
+                }
+            }
         }
     }
 }
@@ -208,6 +289,11 @@ bool square_occupied(State* current_state, int square_x, int square_y){
     }
 
     return false;
+}
+
+bool square_in_bounds(State* current_state, int square_x, int square_y){
+
+    return square_x >= 0 && square_x < current_state->map_width && square_y >= 0 && square_y < current_state->map_height;
 }
 
 int get_ducklist_length(State* current_state){
