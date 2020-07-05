@@ -82,6 +82,7 @@ int main(){
     bool running = true;
 
     State* current_state = get_initial_state();
+    bool awaiting_follow_input = false;
 
     while(running){
 
@@ -100,23 +101,69 @@ int main(){
                 int key = e.key.keysym.sym;
                 if(key == SDLK_UP || key == SDLK_w){
 
-                    player_move = PLAYER_MOVE_UP;
+                    if(awaiting_follow_input){
+
+                        player_move = PLAYER_WADDLE_UP;
+                        awaiting_follow_input = false;
+
+                    }else{
+
+                        player_move = PLAYER_MOVE_UP;
+                    }
 
                 }else if(key == SDLK_RIGHT || key == SDLK_d){
 
-                    player_move = PLAYER_MOVE_RIGHT;
+                    if(awaiting_follow_input){
+
+                        player_move = PLAYER_WADDLE_RIGHT;
+                        awaiting_follow_input = false;
+
+                    }else{
+
+                        player_move = PLAYER_MOVE_RIGHT;
+                    }
 
                 }else if(key == SDLK_DOWN || key == SDLK_s){
 
-                    player_move = PLAYER_MOVE_DOWN;
+                    if(awaiting_follow_input){
+
+                        player_move = PLAYER_WADDLE_DOWN;
+                        awaiting_follow_input = false;
+                        
+                    }else{
+
+                        player_move = PLAYER_MOVE_DOWN;
+                    }
 
                 }else if(key == SDLK_LEFT || key == SDLK_a){
 
-                    player_move = PLAYER_MOVE_LEFT;
+                    if(awaiting_follow_input){
+
+                        player_move = PLAYER_WADDLE_LEFT;
+                        awaiting_follow_input = false;
+
+                    }else{
+
+                        player_move = PLAYER_MOVE_LEFT;
+                    }
 
                 }else if(key == SDLK_z){
 
                     player_move = PLAYER_MOVE_UNDO;
+
+                }else if(key == SDLK_SPACE){
+
+                    if(awaiting_follow_input){
+
+                        awaiting_follow_input = false;
+
+                    }else{
+
+                        if(get_ducklist_length(current_state) != 0){
+
+                            awaiting_follow_input = true;
+                        }
+                    }
                 }
             }
         }
