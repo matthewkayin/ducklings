@@ -7,6 +7,9 @@ State* get_initial_state(){
     initial_state->player_x = 2;
     initial_state->player_y = 2;
 
+    initial_state->player_last_duckling = -1;
+    initial_state->player_bread_count = 0;
+
     for(int i = 0; i < MAX_DUCK_COUNT; i++){
 
         // A duckling with position -1, -1 is interpreted to be non-existant
@@ -16,8 +19,6 @@ State* get_initial_state(){
         initial_state->duckling_direction[i] = -1;
         initial_state->duckling_holds_bread[i] = false;
     }
-
-    initial_state->player_last_duckling = -1;
 
     for(int i = 0; i < MAX_BREAD_COUNT; i++){
 
@@ -61,7 +62,7 @@ void handle_move(State* current_state, int player_move){
         int dest_x = current_state->player_x + direction_array[direction_array_index][0];
         int dest_y = current_state->player_y + direction_array[direction_array_index][1];
 
-        bool move_allowed = !square_occupied(current_state, dest_x, dest_y);
+        bool move_allowed = !square_occupied(current_state, dest_x, dest_y) && square_in_bounds(current_state, dest_x, dest_y);
         bool added_duckling = false;
         // If the square is occupied but it is occupied by a duck which is not in the list, then the move is still allowed
         if(!move_allowed){
@@ -87,6 +88,13 @@ void handle_move(State* current_state, int player_move){
 
                     current_state->player_last_duckling = i;
 
+                    // If the duckling we added has bread, collect it
+                    if(current_state->duckling_holds_bread[i]){
+
+                        current_state->player_bread_count++;
+                        current_state->duckling_holds_bread[i] = false;
+                    }
+
                     added_duckling = true;
                     move_allowed = true;
                     break;
@@ -98,6 +106,17 @@ void handle_move(State* current_state, int player_move){
 
             current_state->player_x += direction_array[direction_array_index][0];
             current_state->player_y += direction_array[direction_array_index][1];
+
+            // Check if the player touched a bread
+            for(int i = 0; i < MAX_BREAD_COUNT; i++){
+
+                if(current_state->player_x == current_state->bread_x[i] && current_state->player_y == current_state->bread_y[i]){
+
+                    current_state->player_bread_count++;
+                    current_state->bread_x[i] = -1;
+                    break;
+                }
+            }
 
             // Now update all the ducklings in the list
             int current_index = current_state->player_last_duckling;

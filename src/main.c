@@ -129,7 +129,7 @@ int main(){
 
                         player_move = PLAYER_WADDLE_DOWN;
                         awaiting_follow_input = false;
-                        
+
                     }else{
 
                         player_move = PLAYER_MOVE_DOWN;
@@ -186,7 +186,11 @@ int main(){
 
         char fps_text[10];
         sprintf(fps_text, "FPS: %i", fps);
-        render_text(renderer, font_small, fps_text, (SDL_Color){.r = 255, .g = 255, .b = 255, .a = 255}, 0, 0);
+        render_text(renderer, font_small, fps_text, (SDL_Color){ .r = 255, .g = 255, .b = 255, .a = 255 }, 0, 0);
+
+        char bread_text[10];
+        sprintf(bread_text, "Bread: %i", current_state->player_bread_count);
+        render_text(renderer, font_small, bread_text, (SDL_Color){ .r = 255, .g = 255, .b = 255, .a = 255 }, 0, 10);
 
         SDL_RenderPresent(renderer);
         frames++;
