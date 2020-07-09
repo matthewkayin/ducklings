@@ -15,12 +15,17 @@
 #define PLAYER_WADDLE_RIGHT 7
 #define PLAYER_WADDLE_DOWN 8
 #define PLAYER_WADDLE_LEFT 9
+#define PLAYER_MOVE_WAIT 10
 #define TILE_WIDTH 32
 #define TILE_HEIGHT 32
 #define MAX_DUCK_COUNT 16
 #define MAX_BREAD_COUNT 16
+#define MAX_GOOSE_COUNT 16
 
 typedef struct State{
+
+    int victory;
+    int required_bread;
 
     int player_x;
     int player_y;
@@ -36,6 +41,9 @@ typedef struct State{
     int bread_x[MAX_BREAD_COUNT];
     int bread_y[MAX_BREAD_COUNT];
 
+    int goose_x[MAX_GOOSE_COUNT];
+    int goose_y[MAX_GOOSE_COUNT];
+
     int map_width;
     int map_height;
 
@@ -48,5 +56,7 @@ State* undo_move(State* current_state);
 bool square_occupied(State* current_state, int square_x, int square_y);
 bool square_in_bounds(State* current_state, int square_x, int square_y);
 int get_ducklist_length(State* current_state);
+
+void goose_pathfind(State* current_state, int goose_index);
 
 #endif

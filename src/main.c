@@ -16,6 +16,7 @@ int main(){
     SDL_Window* window = NULL;
     SDL_Renderer* renderer = NULL;
     TTF_Font* font_small = NULL;
+    TTF_Font* font_large = NULL;
 
     // Init SDL
     bool init_successful = true;
@@ -47,6 +48,7 @@ int main(){
             }else{
 
                 font_small = TTF_OpenFont("./res/helvetica.ttf", 10);
+                font_large = TTF_OpenFont("./res/helvetica.ttf", 36);
 
                 if(font_small == NULL){
 
@@ -104,7 +106,6 @@ int main(){
                     if(awaiting_follow_input){
 
                         player_move = PLAYER_WADDLE_UP;
-                        awaiting_follow_input = false;
 
                     }else{
 
@@ -116,7 +117,6 @@ int main(){
                     if(awaiting_follow_input){
 
                         player_move = PLAYER_WADDLE_RIGHT;
-                        awaiting_follow_input = false;
 
                     }else{
 
@@ -128,7 +128,6 @@ int main(){
                     if(awaiting_follow_input){
 
                         player_move = PLAYER_WADDLE_DOWN;
-                        awaiting_follow_input = false;
 
                     }else{
 
@@ -140,7 +139,6 @@ int main(){
                     if(awaiting_follow_input){
 
                         player_move = PLAYER_WADDLE_LEFT;
-                        awaiting_follow_input = false;
 
                     }else{
 
@@ -151,31 +149,51 @@ int main(){
 
                     player_move = PLAYER_MOVE_UNDO;
 
-                }else if(key == SDLK_SPACE){
+                }else if(key == SDLK_LSHIFT){
 
-                    if(awaiting_follow_input){
-
-                        awaiting_follow_input = false;
-
-                    }else{
+                    if(!awaiting_follow_input){
 
                         if(get_ducklist_length(current_state) != 0){
 
                             awaiting_follow_input = true;
                         }
                     }
+
+                }else if(key == SDLK_SPACE){
+
+                    player_move = PLAYER_MOVE_WAIT;
+
+                }else if(key == SDLK_RETURN){
+
+                    if(current_state->victory != 0){
+
+                        while(current_state->previous_state != NULL){
+
+                            current_state = undo_move(current_state);
+                        }
+                        free(current_state);
+                        current_state = get_initial_state();
+                    }
                 }
             }
         }
 
-        // Update
-        if(player_move == PLAYER_MOVE_UNDO){
+        if(current_state->victory == 0){
 
-            current_state = undo_move(current_state);
+            if(player_move != NOTHING){
 
-        }else if(player_move != NOTHING){
+                awaiting_follow_input = false;
+            }
 
-            handle_move(current_state, player_move);
+            // Update
+            if(player_move == PLAYER_MOVE_UNDO){
+
+                current_state = undo_move(current_state);
+
+            }else if(player_move != NOTHING){
+
+                handle_move(current_state, player_move);
+            }
         }
 
         // Render
@@ -188,9 +206,20 @@ int main(){
         sprintf(fps_text, "FPS: %i", fps);
         render_text(renderer, font_small, fps_text, (SDL_Color){ .r = 255, .g = 255, .b = 255, .a = 255 }, 0, 0);
 
-        char bread_text[10];
-        sprintf(bread_text, "Bread: %i", current_state->player_bread_count);
+        char bread_text[20];
+        sprintf(bread_text, "Bread: %i / %i", current_state->player_bread_count, current_state->required_bread);
         render_text(renderer, font_small, bread_text, (SDL_Color){ .r = 255, .g = 255, .b = 255, .a = 255 }, 0, 10);
+
+        if(current_state->victory == 1){
+
+            char victory_text[10] = "Success!";
+            render_text(renderer, font_large, victory_text, (SDL_Color){ .r = 0, .g = 255, .b = 0, .a = 255 }, -1, -1);
+
+        }else if(current_state->victory == -1){
+
+            char failure_text[10] = "Failure!";
+            render_text(renderer, font_large, failure_text, (SDL_Color){ .r = 255, .g = 0, .b = 0, .a = 255 }, -1, -1);
+        }
 
         SDL_RenderPresent(renderer);
         frames++;
@@ -214,6 +243,14 @@ int main(){
 
         frame_before_time = SDL_GetTicks();
     }
+
+    // Cleanup memory
+    while(current_state->previous_state != NULL){
+
+        current_state = undo_move(current_state);
+    }
+    free(current_state);
+    current_state = NULL;
 
     // Quit SDL
     TTF_CloseFont(font_small);
@@ -240,7 +277,7 @@ void render_state(SDL_Renderer* renderer, State* current_state){
 
         if(current_state->duckling_x[i] != -1){
 
-            SDL_Rect duckling_rect = (SDL_Rect){.x = current_state->duckling_x[i] * TILE_WIDTH, .y = current_state->duckling_y[i] * TILE_HEIGHT, .w = TILE_WIDTH, .h = TILE_HEIGHT};
+            SDL_Rect duckling_rect = (SDL_Rect){ .x = current_state->duckling_x[i] * TILE_WIDTH, .y = current_state->duckling_y[i] * TILE_HEIGHT, .w = TILE_WIDTH, .h = TILE_HEIGHT };
             SDL_RenderFillRect(renderer, &duckling_rect);
         }
     }
@@ -250,8 +287,18 @@ void render_state(SDL_Renderer* renderer, State* current_state){
 
         if(current_state->bread_x[i] != -1){
 
-            SDL_Rect bread_rect = (SDL_Rect){.x = current_state->bread_x[i] * TILE_WIDTH, .y = current_state->bread_y[i] * TILE_HEIGHT, .w = TILE_WIDTH, .h = TILE_HEIGHT};
+            SDL_Rect bread_rect = (SDL_Rect){ .x = current_state->bread_x[i] * TILE_WIDTH, .y = current_state->bread_y[i] * TILE_HEIGHT, .w = TILE_WIDTH, .h = TILE_HEIGHT };
             SDL_RenderFillRect(renderer, &bread_rect);
+        }
+    }
+
+    SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
+    for(int i = 0; i < MAX_GOOSE_COUNT; i++){
+
+        if(current_state->goose_x[i] != -1){
+
+            SDL_Rect goose_rect = (SDL_Rect){ .x = current_state->goose_x[i] * TILE_WIDTH, .y = current_state->goose_y[i] * TILE_HEIGHT, .w = TILE_WIDTH, .h = TILE_HEIGHT };
+            SDL_RenderFillRect(renderer, &goose_rect);
         }
     }
 }

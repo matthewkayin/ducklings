@@ -3,6 +3,9 @@
 State* get_initial_state(){
 
     State* initial_state = (State*)malloc(sizeof(State));
+    
+    initial_state->victory = 0;
+    initial_state->required_bread = 3;
 
     initial_state->player_x = 2;
     initial_state->player_y = 2;
@@ -27,6 +30,13 @@ State* get_initial_state(){
         initial_state->bread_y[i] = -1;
     }
 
+    for(int i = 0; i < MAX_GOOSE_COUNT; i++){
+
+        // As with all the other coords, -1 indicates non-existant
+        initial_state->goose_x[i] = -1;
+        initial_state->goose_y[i] = -1;
+    }
+
     initial_state->map_width = 20;
     initial_state->map_height = 12;
 
@@ -39,6 +49,13 @@ State* get_initial_state(){
 
     initial_state->bread_x[0] = 6;
     initial_state->bread_y[0] = 6;
+    initial_state->bread_x[1] = 7;
+    initial_state->bread_y[1] = 6;
+    initial_state->bread_x[2] = 8;
+    initial_state->bread_y[2] = 6;
+
+    initial_state->goose_x[0] = 19;
+    initial_state->goose_y[0] = 8;
 
     initial_state->previous_state = NULL;
 
@@ -213,7 +230,12 @@ void handle_move(State* current_state, int player_move){
     // Check and handle the ducklings for invalid movement
     for(int i = 0; i < MAX_DUCK_COUNT; i++){
 
-        if(current_state->duckling_x[i] != -1 && current_state->duckling_follows[i] == i && current_state->duckling_direction[i] != -1){
+        if(current_state->duckling_x[i] == -1 && current_state->duckling_y[i] == -1){
+
+            continue;
+        }
+
+        if(current_state->duckling_follows[i] == i && current_state->duckling_direction[i] != -1){
 
             if(!square_in_bounds(current_state, current_state->duckling_x[i], current_state->duckling_y[i])){
 
@@ -276,6 +298,35 @@ void handle_move(State* current_state, int player_move){
             }
         }
     }
+
+    bool goose_got_bread = false;
+    for(int i = 0; i < MAX_GOOSE_COUNT; i++){
+
+        if(current_state->goose_x[i] != -1){
+
+            goose_pathfind(current_state, i);
+            
+            // Once goose has moved, check if they got any bread
+            for(int j = 0; j < MAX_BREAD_COUNT; j++){
+
+                if(current_state->goose_x[i] == current_state->bread_x[j] && current_state->goose_y[i] == current_state->bread_y[j]){
+
+                    current_state->bread_x[j] = -1;
+                    goose_got_bread = true;
+                    break;
+                }
+            }
+        }
+    }
+
+    if(goose_got_bread){
+
+        current_state->victory = -1;
+
+    }else if(current_state->player_bread_count >= current_state->required_bread){
+
+        current_state->victory = 1;
+    }
 }
 
 State* undo_move(State* current_state){
@@ -307,6 +358,14 @@ bool square_occupied(State* current_state, int square_x, int square_y){
         }
     }
 
+    for(int i = 0; i < MAX_GOOSE_COUNT; i++){
+
+        if(square_x == current_state->goose_x[i] && square_y == current_state->goose_y[i]){
+
+            return true;
+        }
+    }
+
     return false;
 }
 
@@ -327,4 +386,179 @@ int get_ducklist_length(State* current_state){
     }
 
     return length;
+}
+
+void goose_pathfind(State* current_state, int goose_index){
+
+    typedef struct {
+
+        int direction;
+        int path_length;
+        int x;
+        int y;
+        int score;
+    } Node;
+
+    int direction_vector[4][2] = {{0, -1}, {1, 0}, {0, 1}, {-1, 0}};
+
+    // First let's find the goal
+    int nearest_bread = -1;
+    int nearest_bread_distance = -1;
+
+    for(int i = 0; i < MAX_BREAD_COUNT; i++){
+
+        if(current_state->bread_x[i] == -1){
+
+            continue;
+        }
+
+        int bread_dist = abs(current_state->goose_x[goose_index] - current_state->bread_x[i]) + abs(current_state->goose_y[goose_index] - current_state->bread_y[i]);
+        if(nearest_bread == -1){
+
+            nearest_bread = i;
+            nearest_bread_distance = bread_dist;
+
+        }else if(bread_dist < nearest_bread_distance){
+
+            nearest_bread = i;
+            nearest_bread_distance = bread_dist;
+        }
+    }
+
+    if(nearest_bread == -1){
+
+        // Don't chase after non-existance bread
+        return;
+    }
+
+    int goal_x = current_state->bread_x[nearest_bread];
+    int goal_y = current_state->bread_y[nearest_bread];
+
+    int frontier_capacity = 16;
+    int frontier_size = 0;
+    Node* frontier = (Node*)malloc(frontier_capacity * sizeof(Node));
+    int explored_capacity = 16;
+    int explored_size = 0;
+    Node* explored = (Node*)malloc(explored_capacity * sizeof(Node));
+
+    frontier[0] = (Node){ .direction = -1, .path_length = 0, .x = current_state->goose_x[goose_index], .y = current_state->goose_y[goose_index], .score = nearest_bread_distance };
+    frontier_size++;
+
+    while(true){
+
+        // Check that the frontier isn't empty
+        if(frontier_size == 0){
+
+            printf("Pathfinding failed!\n");
+            break;
+        }
+
+        // Find the smallest node in the frontier
+        int smallest_index = 0;
+        for(int i = 1; i < frontier_size; i++){
+
+            if(frontier[i].score < frontier[smallest_index].score){
+
+                smallest_index = i;
+            }
+        }
+
+        // Remove it from the frontier
+        Node smallest = frontier[smallest_index];
+        for(int i = smallest_index + 1; i < frontier_size; i++){
+
+            frontier[i - 1] = frontier[i];
+        }
+        frontier_size--;
+
+        // Check if it's the solution
+        if(smallest.x == goal_x && smallest.y == goal_y){
+
+            // If it is, move goose one step along that path then exit
+            current_state->goose_x[goose_index] += direction_vector[smallest.direction][0];
+            current_state->goose_y[goose_index] += direction_vector[smallest.direction][1];
+            break;
+        }
+
+        // Add it to explored
+        if(explored_size == explored_capacity){
+
+            explored_capacity *= 2;
+            explored = (Node*)realloc(explored, explored_capacity * sizeof(Node));
+        }
+        explored_size++;
+        explored[explored_size - 1] = smallest;
+
+        // Expand out all possible paths based on the one we've chosen
+        for(int direction = 0; direction < 4; direction++){
+
+            int child_x = smallest.x + direction_vector[direction][0];
+            int child_y = smallest.y + direction_vector[direction][1];
+
+            // If the path leads to an invalid square, ignore it
+            if(square_occupied(current_state, child_x, child_y) || !square_in_bounds(current_state, child_x, child_y)){
+
+                continue;
+            }
+
+            // Create the child node
+            int first_direction = smallest.direction;
+            if(first_direction == -1){
+
+                first_direction = direction;
+            }
+            int path_length = smallest.path_length + 1;
+            int score = path_length + abs(child_x - goal_x) + abs(child_y - goal_y);
+            Node child = (Node){ .direction = first_direction, .path_length = path_length, .x = child_x, .y = child_y, .score = score };
+
+            // Ignore this child if in explored
+            bool child_in_explored = false;
+            for(int i = 0; i < explored_size; i++){
+
+                if(child.x == explored[i].x && child.y == explored[i].y){
+
+                    child_in_explored = true;
+                    break;
+                }
+            }
+            if(child_in_explored){
+
+                continue;
+            }
+
+            // Ignore this child if in frontier
+            bool child_in_frontier = false;
+            int frontier_index = -1;
+            for(int i = 0; i < frontier_size; i++){
+
+                if(child.x == frontier[i].x && child.y == frontier[i].y){
+
+                    child_in_frontier = true;
+                    frontier_index = i;
+                    break;
+                }
+            }
+            if(child_in_frontier){
+
+                // If the child is in frontier but with a smaller cost, replace the frontier version with the child
+                if(child.score < frontier[frontier_index].score){
+
+                    frontier[frontier_index] = child;
+                }
+                continue;
+            }
+
+            // Finally if child is neither in frontier nor explored, add it to the frontier
+            if(frontier_size == frontier_capacity){
+
+                frontier_capacity *= 2;
+                frontier = (Node*)realloc(frontier, frontier_capacity * sizeof(Node));
+            }
+            frontier_size++;
+            frontier[frontier_size - 1] = child;
+        }
+    }
+
+    free(frontier);
+    free(explored);
 }
