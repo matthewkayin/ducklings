@@ -3,6 +3,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <stdbool.h>
 
 #define NOTHING 0
@@ -50,13 +51,19 @@ typedef struct State{
     struct State* previous_state;
 } State;
 
-State* get_initial_state();
+State* get_empty_state();
 void handle_move(State* current_state, int player_move);
 State* undo_move(State* current_state);
 bool square_occupied(State* current_state, int square_x, int square_y);
 bool square_in_bounds(State* current_state, int square_x, int square_y);
 int get_ducklist_length(State* current_state);
-
 void goose_pathfind(State* current_state, int goose_index);
+
+void editor_erase_at(State* current_state, int square_x, int square_y);
+void editor_save_puzzle(State* current_state, char* filename);
+State* get_from_file(char* filename);
+int get_duckling_count(State* current_state);
+int get_bread_count(State* current_state);
+int get_goose_count(State* current_state);
 
 #endif

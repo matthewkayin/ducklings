@@ -1,11 +1,11 @@
 #include "game.h"
 
-State* get_initial_state(){
+State* get_empty_state(){
 
     State* initial_state = (State*)malloc(sizeof(State));
     
     initial_state->victory = 0;
-    initial_state->required_bread = 3;
+    initial_state->required_bread = 0;
 
     initial_state->player_x = 2;
     initial_state->player_y = 2;
@@ -38,24 +38,7 @@ State* get_initial_state(){
     }
 
     initial_state->map_width = 20;
-    initial_state->map_height = 12;
-
-    initial_state->duckling_x[0] = 4;
-    initial_state->duckling_y[0] = 2;
-    initial_state->duckling_x[1] = 4;
-    initial_state->duckling_y[1] = 4;
-    initial_state->duckling_x[2] = 2;
-    initial_state->duckling_y[2] = 4;
-
-    initial_state->bread_x[0] = 6;
-    initial_state->bread_y[0] = 6;
-    initial_state->bread_x[1] = 7;
-    initial_state->bread_y[1] = 6;
-    initial_state->bread_x[2] = 8;
-    initial_state->bread_y[2] = 6;
-
-    initial_state->goose_x[0] = 19;
-    initial_state->goose_y[0] = 8;
+    initial_state->map_height = 11;
 
     initial_state->previous_state = NULL;
 
@@ -561,4 +544,213 @@ void goose_pathfind(State* current_state, int goose_index){
 
     free(frontier);
     free(explored);
+}
+
+void editor_erase_at(State* current_state, int square_x, int square_y){
+
+    for(int i = 0; i < MAX_DUCK_COUNT; i++){
+
+        if(current_state->duckling_x[i] == square_x && current_state->duckling_y[i] == square_y){
+
+            current_state->duckling_x[i] = -1;
+            return;
+        }
+    }
+
+    for(int i = 0; i < MAX_BREAD_COUNT; i++){
+
+        if(current_state->bread_x[i] == square_x && current_state->bread_y[i] == square_y){
+
+            current_state->bread_x[i] = -1;
+            return;
+        }
+    }
+
+    for(int i = 0; i < MAX_GOOSE_COUNT; i++){
+
+        if(current_state->goose_x[i] == square_x && current_state->goose_y[i] == square_y){
+
+            current_state->goose_x[i] = -1;
+            return;
+        }
+    }
+}
+
+void editor_save_puzzle(State* current_state, char* filename){
+
+    char filepath[256];
+    sprintf(filepath, "./puzzles/%s", filename);
+    FILE* file = fopen(filepath, "w");
+
+    fprintf(file, "save_version 1\n");
+    fprintf(file, "map_width %i\n", current_state->map_width);
+    fprintf(file, "map_height %i\n", current_state->map_height);
+    fprintf(file, "required_bread %i\n", get_bread_count(current_state));
+    fprintf(file, "player %i %i\n", current_state->player_x, current_state->player_y);
+    for(int i = 0; i < MAX_DUCK_COUNT; i++){
+
+        if(current_state->duckling_x[i] != -1){
+
+            fprintf(file, "duckling %i %i\n", current_state->duckling_x[i], current_state->duckling_y[i]);
+        }
+    }
+    for(int i = 0; i < MAX_BREAD_COUNT; i++){
+
+        if(current_state->bread_x[i] != -1){
+
+            fprintf(file, "bread %i %i\n", current_state->bread_x[i], current_state->bread_y[i]);
+        }
+    }
+    for(int i = 0; i < MAX_GOOSE_COUNT; i++){
+
+        if(current_state->goose_x[i] != -1){
+
+            fprintf(file, "goose %i %i\n", current_state->goose_x[i], current_state->goose_y[i]);
+        }
+    }
+
+    fclose(file);
+}
+
+State* get_from_file(char* filename){
+
+    State* loaded_state = get_empty_state();
+
+    char filepath[256];
+    sprintf(filepath, "./puzzles/%s", filename);
+    FILE* file = fopen(filepath, "r");
+
+    char buffer[255];
+    while(fgets(buffer, 255, file) != NULL){
+
+        int space_count = 0;
+        for(int i = 0; i < 255; i++){
+
+            if(buffer[i] == ' '){
+
+                space_count++;
+
+            }else if(buffer[i] == '\n'){
+
+                break;
+            }
+        }
+
+        if(space_count == 1){
+
+            // Single parameter
+            char header[80];
+            int param;
+            sscanf(buffer, "%s %i", header, &param);
+
+            if(strcmp(header, "map_width") == 0){
+
+                loaded_state->map_width = param;
+
+            }else if(strcmp(header, "map_height") == 0){
+
+                loaded_state->map_height = param;
+
+            }else if(strcmp(header, "required_bread") == 0){
+
+                loaded_state->required_bread = param;
+            }
+
+        }else if(space_count == 2){
+
+            // Dual parameter
+            char header[80];
+            int first_param;
+            int second_param;
+            sscanf(buffer, "%s %i %i", header, &first_param, &second_param);
+
+            if(strcmp(header, "player") == 0){
+
+                loaded_state->player_x = first_param;
+                loaded_state->player_y = second_param;
+
+            }else if(strcmp(header, "duckling") == 0){
+
+                for(int i = 0; i < MAX_DUCK_COUNT; i++){
+
+                    if(loaded_state->duckling_x[i] == -1){
+
+                        loaded_state->duckling_x[i] = first_param;
+                        loaded_state->duckling_y[i] = second_param;
+                        break;
+                    }
+                }
+
+            }else if(strcmp(header, "bread") == 0){
+
+                for(int i = 0; i < MAX_BREAD_COUNT; i++){
+
+                    if(loaded_state->bread_x[i] == -1){
+
+                        loaded_state->bread_x[i] = first_param;
+                        loaded_state->bread_y[i] = second_param;
+                        break;
+                    }
+                }
+
+            }else if(strcmp(header, "goose") == 0){
+
+                for(int i = 0; i < MAX_GOOSE_COUNT; i++){
+
+                    if(loaded_state->goose_x[i] == -1){
+
+                        loaded_state->goose_x[i] = first_param;
+                        loaded_state->goose_y[i] = second_param;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    fclose(file);
+
+    return loaded_state;
+}
+
+int get_duckling_count(State* current_state){
+
+    int duckling_count = 0;
+    for(int i = 0; i < MAX_DUCK_COUNT; i++){
+
+        if(current_state->duckling_x[i] != -1){
+
+            duckling_count++;
+        }
+    }
+
+    return duckling_count;
+}
+
+int get_bread_count(State* current_state){
+
+    int bread_count = 0;
+    for(int i = 0; i < MAX_BREAD_COUNT; i++){
+
+        if(current_state->bread_x[i] != -1){
+
+            bread_count++;
+        }
+    }
+
+    return bread_count;
+}
+
+int get_goose_count(State* current_state){
+
+    int goose_count = 0;
+    for(int i = 0; i < MAX_GOOSE_COUNT; i++){
+
+        if(current_state->goose_x[i] != -1){
+
+            goose_count++;
+        }
+    }
+
+    return goose_count;
 }
