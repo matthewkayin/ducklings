@@ -30,6 +30,7 @@ typedef struct State{
 
     int player_x;
     int player_y;
+    int player_direction;
     int player_last_duckling;
     int player_bread_count;
 
@@ -37,6 +38,7 @@ typedef struct State{
     int duckling_y[MAX_DUCK_COUNT];
     int duckling_follows[MAX_DUCK_COUNT]; // self-index is noone, -1 is player, 0-15 is other duckling
     int duckling_direction[MAX_DUCK_COUNT]; // -1 is stand still, 0-3 are up right down left
+    bool duckling_waddles[MAX_DUCK_COUNT];
     bool duckling_holds_bread[MAX_DUCK_COUNT];
 
     int bread_x[MAX_BREAD_COUNT];
@@ -44,6 +46,7 @@ typedef struct State{
 
     int goose_x[MAX_GOOSE_COUNT];
     int goose_y[MAX_GOOSE_COUNT];
+    int goose_direction[MAX_GOOSE_COUNT];
 
     int map_width;
     int map_height;

@@ -9,6 +9,7 @@ State* get_empty_state(){
 
     initial_state->player_x = 2;
     initial_state->player_y = 2;
+    initial_state->player_direction = 1;
 
     initial_state->player_last_duckling = -1;
     initial_state->player_bread_count = 0;
@@ -19,7 +20,8 @@ State* get_empty_state(){
         initial_state->duckling_x[i] = -1;
         initial_state->duckling_y[i] = -1;
         initial_state->duckling_follows[i] = i;
-        initial_state->duckling_direction[i] = -1;
+        initial_state->duckling_direction[i] = 1;
+        initial_state->duckling_waddles[i] = false;
         initial_state->duckling_holds_bread[i] = false;
     }
 
@@ -35,6 +37,7 @@ State* get_empty_state(){
         // As with all the other coords, -1 indicates non-existant
         initial_state->goose_x[i] = -1;
         initial_state->goose_y[i] = -1;
+        initial_state->goose_direction[i] = 1;
     }
 
     initial_state->map_width = 20;
@@ -58,6 +61,7 @@ void handle_move(State* current_state, int player_move){
 
         // Move player
         int direction_array_index = player_move - PLAYER_MOVE_UP;
+        current_state->player_direction = direction_array_index;
 
         int dest_x = current_state->player_x + direction_array[direction_array_index][0];
         int dest_y = current_state->player_y + direction_array[direction_array_index][1];
@@ -87,6 +91,7 @@ void handle_move(State* current_state, int player_move){
                     }
 
                     current_state->player_last_duckling = i;
+                    current_state->duckling_waddles[i] = false;
 
                     // If the duckling we added has bread, collect it
                     if(current_state->duckling_holds_bread[i]){
@@ -142,6 +147,19 @@ void handle_move(State* current_state, int player_move){
                         follow_x = current_state->duckling_x[follows_index];
                         follow_y = current_state->duckling_y[follows_index];
                     }
+
+                    // Set direction based on movement
+                    int x_dist = follow_x - current_state->duckling_x[current_index];
+                    int y_dist = follow_y - current_state->duckling_y[current_index];
+                    for(int i = 0; i < 4; i++){
+
+                        if(x_dist == direction_array[i][0] && y_dist == direction_array[i][1]){
+
+                            current_state->duckling_direction[current_index] = i;
+                            break;
+                        }
+                    }
+
                     current_state->duckling_x[current_index] = follow_x;
                     current_state->duckling_y[current_index] = follow_y;
                 }
@@ -184,11 +202,24 @@ void handle_move(State* current_state, int player_move){
                     current_state->duckling_y[current_index] = current_state->player_y;
                     current_state->duckling_follows[current_index] = current_index;
                     current_state->duckling_direction[current_index] = direction_array_index;
+                    current_state->duckling_waddles[current_index] = true;
 
                     // This is the last duckling so call this to exit the loop
                     current_index = -1;
 
                 }else{
+
+                    // Set direction based on movement
+                    int x_dist = current_state->duckling_x[follows_index] - current_state->duckling_x[current_index];
+                    int y_dist = current_state->duckling_y[follows_index] - current_state->duckling_y[current_index];
+                    for(int i = 0; i < 4; i++){
+
+                        if(x_dist == direction_array[i][0] && y_dist == direction_array[i][1]){
+
+                            current_state->duckling_direction[current_index] = i;
+                            break;
+                        }
+                    }
 
                     current_state->duckling_x[current_index] = current_state->duckling_x[follows_index];
                     current_state->duckling_y[current_index] = current_state->duckling_y[follows_index];
@@ -203,7 +234,7 @@ void handle_move(State* current_state, int player_move){
     // If the ducklings are waddling, waddle them along
     for(int i = 0; i < MAX_DUCK_COUNT; i++){
 
-        if(current_state->duckling_x[i] != -1 && current_state->duckling_follows[i] == i && current_state->duckling_direction[i] != -1){
+        if(current_state->duckling_x[i] != -1 && current_state->duckling_waddles[i]){
 
             current_state->duckling_x[i] += direction_array[current_state->duckling_direction[i]][0];
             current_state->duckling_y[i] += direction_array[current_state->duckling_direction[i]][1];
@@ -460,6 +491,7 @@ void goose_pathfind(State* current_state, int goose_index){
             // If it is, move goose one step along that path then exit
             current_state->goose_x[goose_index] += direction_vector[smallest.direction][0];
             current_state->goose_y[goose_index] += direction_vector[smallest.direction][1];
+            current_state->goose_direction[goose_index] = smallest.direction;
             break;
         }
 

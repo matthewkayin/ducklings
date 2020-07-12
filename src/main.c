@@ -16,14 +16,34 @@
 #define SCREEN_WIDTH 640
 #define SCREEN_HEIGHT 360
 
+typedef struct Texture{
+
+    SDL_Texture* texture;
+    int width;
+    int height;
+} Texture;
+Texture texture_duck_right;
+Texture texture_duck_up;
+Texture texture_duck_down;
+Texture texture_duckling_right;
+Texture texture_duckling_up;
+Texture texture_duckling_down;
+Texture texture_goose_right;
+Texture texture_goose_up;
+Texture texture_goose_down;
+Texture texture_grass;
+Texture texture_bread;
 
 int menu_loop(SDL_Renderer* renderer, char* filename);
 int game_loop(SDL_Renderer* renderer, char* filename);
 int edit_loop(SDL_Renderer* renderer, char* filename);
 
 char** generate_puzzle_list(int* puzzle_count);
+Texture load_texture(SDL_Renderer* renderer, char* path);
 void render_state(SDL_Renderer* renderer, State* current_state);
 void render_text(SDL_Renderer* renderer, TTF_Font* font, char* text, SDL_Color color, int x, int y);
+void render_image(SDL_Renderer* renderer, Texture* texture, int x, int y);
+void render_flipped(SDL_Renderer* renderer, Texture* texture, int x, int y);
 
 int main(){
 
@@ -74,6 +94,18 @@ int main(){
         return 0;
     }
 
+    texture_duck_right = load_texture(renderer, "./res/momduck_leftright.png");
+    texture_duck_up = load_texture(renderer, "./res/momduck_up.png");
+    texture_duck_down = load_texture(renderer, "./res/momduck_down.png");
+    texture_duckling_right = load_texture(renderer, "./res/babyduck_leftright.png");
+    texture_duckling_up = load_texture(renderer, "./res/babyduck_up.png");
+    texture_duckling_down = load_texture(renderer, "./res/babyduck_down.png");
+    texture_goose_right = load_texture(renderer, "./res/goose_leftright.png");
+    texture_goose_up = load_texture(renderer, "./res/goose_up.png");
+    texture_goose_down = load_texture(renderer, "./res/goose_down.png");
+    texture_grass = load_texture(renderer, "./res/grass_tile.png");
+    texture_bread = load_texture(renderer, "./res/bread.png");
+
     int gamestate = GAMESTATE_MENU;
     char* filename = (char*)malloc(255 * sizeof(char));
     while(gamestate != GAMESTATE_EXIT){
@@ -94,6 +126,10 @@ int main(){
     free(filename);
 
     // Quit SDL
+    SDL_DestroyTexture(texture_duck_right.texture);
+    SDL_DestroyTexture(texture_duck_up.texture);
+    SDL_DestroyTexture(texture_duck_down.texture);
+
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
 
@@ -215,7 +251,7 @@ int menu_loop(SDL_Renderer* renderer, char* filename){
 
                     }else if(menu_state == 1){
 
-                        strncpy(filename, puzzle_files[menu_index], strlen(puzzle_files[menu_index]));
+                        strcpy(filename, puzzle_files[menu_index]);
                         return_state = GAMESTATE_GAME;
                         running = false;
 
@@ -227,7 +263,7 @@ int menu_loop(SDL_Renderer* renderer, char* filename){
 
                         }else{
 
-                            strncpy(filename, puzzle_files[menu_index - 1], strlen(puzzle_files[menu_index - 1]));
+                            strcpy(filename, puzzle_files[menu_index - 1]);
                             return_state = GAMESTATE_EDIT;
                             running = false;
                         }
@@ -471,6 +507,34 @@ char** generate_puzzle_list(int* puzzle_count){
     return puzzles;
 }
 
+Texture load_texture(SDL_Renderer* renderer, char* path){
+
+    Texture new_texture;
+    new_texture.texture = NULL;
+
+    SDL_Surface* loaded_surface = IMG_Load(path);
+    if(loaded_surface == NULL){
+
+        printf("Unable to load image! SDL Error: %s\n", IMG_GetError());
+        return new_texture;
+    }
+
+    new_texture.texture = SDL_CreateTextureFromSurface(renderer, loaded_surface);
+
+    if(new_texture.texture == NULL){
+
+        printf("Unable to create teture! SDL Error: %s\n", IMG_GetError());
+        return new_texture;
+    }
+
+    new_texture.width = loaded_surface->w;
+    new_texture.height = loaded_surface->h;
+
+    SDL_FreeSurface(loaded_surface);
+
+    return new_texture;
+}
+
 int game_loop(SDL_Renderer* renderer, char* filename){
 
     TTF_Font* font_small = TTF_OpenFont("./res/notosans.ttf", 10);
@@ -688,28 +752,60 @@ int game_loop(SDL_Renderer* renderer, char* filename){
 
 void render_state(SDL_Renderer* renderer, State* current_state){
 
-    // Render player
-    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-    SDL_Rect player_rect = (SDL_Rect){.x = current_state->player_x * TILE_WIDTH, .y = current_state->player_y * TILE_WIDTH, .w = TILE_WIDTH, .h = TILE_HEIGHT};
-    SDL_RenderFillRect(renderer, &player_rect);
+    for(int i = 0; i < current_state->map_width; i++){
 
-    SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);
+        for(int j = 0; j < current_state->map_height; j++){
+
+            render_image(renderer, &texture_grass, i * TILE_WIDTH, j * TILE_HEIGHT);
+        }
+    }
+
+    // Render player
+    if(current_state->player_direction == 0){
+
+        render_image(renderer, &texture_duck_up, current_state->player_x * TILE_WIDTH, current_state->player_y * TILE_HEIGHT);
+
+    }else if(current_state->player_direction == 1){
+
+        render_image(renderer, &texture_duck_right, current_state->player_x * TILE_WIDTH, current_state->player_y * TILE_HEIGHT);
+
+    }else if(current_state->player_direction == 2){
+
+        render_image(renderer, &texture_duck_down, current_state->player_x * TILE_WIDTH, current_state->player_y * TILE_HEIGHT);
+
+    }else if(current_state->player_direction == 3){
+
+        render_flipped(renderer, &texture_duck_right, current_state->player_x * TILE_WIDTH, current_state->player_y * TILE_HEIGHT);
+    }
+
     for(int i = 0; i < MAX_DUCK_COUNT; i++){
 
         if(current_state->duckling_x[i] != -1){
 
-            SDL_Rect duckling_rect = (SDL_Rect){ .x = current_state->duckling_x[i] * TILE_WIDTH, .y = current_state->duckling_y[i] * TILE_HEIGHT, .w = TILE_WIDTH, .h = TILE_HEIGHT };
-            SDL_RenderFillRect(renderer, &duckling_rect);
+            if(current_state->duckling_direction[i] == 0){
+
+                render_image(renderer, &texture_duckling_up, current_state->duckling_x[i] * TILE_WIDTH, current_state->duckling_y[i] * TILE_HEIGHT);
+
+            }else if(current_state->duckling_direction[i] == 1){
+
+                render_image(renderer, &texture_duckling_right, current_state->duckling_x[i] * TILE_WIDTH, current_state->duckling_y[i] * TILE_HEIGHT);
+
+            }else if(current_state->duckling_direction[i] == 2){
+
+                render_image(renderer, &texture_duckling_down, current_state->duckling_x[i] * TILE_WIDTH, current_state->duckling_y[i] * TILE_HEIGHT);
+                
+            }else if(current_state->duckling_direction[i] == 3){
+
+                render_flipped(renderer, &texture_duckling_right, current_state->duckling_x[i] * TILE_WIDTH, current_state->duckling_y[i] * TILE_HEIGHT);
+            }
         }
     }
 
-    SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
     for(int i = 0; i < MAX_BREAD_COUNT; i++){
 
         if(current_state->bread_x[i] != -1){
 
-            SDL_Rect bread_rect = (SDL_Rect){ .x = current_state->bread_x[i] * TILE_WIDTH, .y = current_state->bread_y[i] * TILE_HEIGHT, .w = TILE_WIDTH, .h = TILE_HEIGHT };
-            SDL_RenderFillRect(renderer, &bread_rect);
+            render_image(renderer, &texture_bread, current_state->bread_x[i] * TILE_WIDTH, current_state->bread_y[i] * TILE_HEIGHT);
         }
     }
 
@@ -720,6 +816,22 @@ void render_state(SDL_Renderer* renderer, State* current_state){
 
             SDL_Rect goose_rect = (SDL_Rect){ .x = current_state->goose_x[i] * TILE_WIDTH, .y = current_state->goose_y[i] * TILE_HEIGHT, .w = TILE_WIDTH, .h = TILE_HEIGHT };
             SDL_RenderFillRect(renderer, &goose_rect);
+            if(current_state->goose_direction[i] == 0){
+
+                render_image(renderer, &texture_goose_up, current_state->goose_x[i] * TILE_WIDTH, current_state->goose_y[i] * TILE_HEIGHT);
+
+            }else if(current_state->goose_direction[i] == 1){
+
+                render_image(renderer, &texture_goose_right, current_state->goose_x[i] * TILE_WIDTH, current_state->goose_y[i] * TILE_HEIGHT);
+
+            }else if(current_state->goose_direction[i] == 2){
+
+                render_image(renderer, &texture_goose_down, current_state->goose_x[i] * TILE_WIDTH, current_state->goose_y[i] * TILE_HEIGHT);
+
+            }else if(current_state->goose_direction[i] == 3){
+
+                render_flipped(renderer, &texture_goose_right, current_state->goose_x[i] * TILE_WIDTH, current_state->goose_y[i] * TILE_HEIGHT);
+            }
         }
     }
 }
@@ -760,6 +872,20 @@ void render_text(SDL_Renderer* renderer, TTF_Font* font, char* text, SDL_Color c
 
     SDL_FreeSurface(text_surface);
     SDL_DestroyTexture(text_texture);
+}
+
+void render_image(SDL_Renderer* renderer, Texture* texture, int x, int y){
+
+    SDL_Rect source_rect = (SDL_Rect){ .x = 0, .y = 0, .w = texture->width, .h = texture->height };
+    SDL_Rect dest_rect = (SDL_Rect){ .x = x, .y = y, .w = source_rect.w, .h = source_rect.h };
+    SDL_RenderCopy(renderer, texture->texture, &source_rect, &dest_rect);
+}
+
+void render_flipped(SDL_Renderer* renderer, Texture* texture, int x, int y){
+
+    SDL_Rect source_rect = (SDL_Rect){ .x = 0, .y = 0, .w = texture->width, .h = texture->height };
+    SDL_Rect dest_rect = (SDL_Rect){ .x = x, .y = y, .w = source_rect.w, .h = source_rect.h };
+    SDL_RenderCopyEx(renderer, texture->texture, &source_rect, &dest_rect, 0, NULL, SDL_FLIP_HORIZONTAL);
 }
 
 int edit_loop(SDL_Renderer* renderer, char* filename){
