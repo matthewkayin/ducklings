@@ -1,3 +1,6 @@
+#ifdef _WIN32
+    #define SDL_MAIN_HANDLED
+#endif
 #include "game.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
@@ -221,6 +224,12 @@ int menu_loop(SDL_Renderer* renderer, char* filename){
                         if(menu_index == 0){
 
                             menu_state = 3;
+
+                        }else{
+
+                            strncpy(filename, puzzle_files[menu_index - 1], strlen(puzzle_files[menu_index - 1]));
+                            return_state = GAMESTATE_EDIT;
+                            running = false;
                         }
 
                     }else if(menu_state == 3){
@@ -782,7 +791,7 @@ int edit_loop(SDL_Renderer* renderer, char* filename){
     FILE* file = fopen(filepath, "r");
     if(file){
 
-        current_state = get_empty_state();
+        current_state = get_from_file(filename);
         fclose(file);
 
     }else{

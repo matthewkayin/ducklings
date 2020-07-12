@@ -12,7 +12,7 @@ OBJS = $(patsubst $(SRCSDIR)/%.c,$(OBJSDIR)/%.o,$(SRCS))
 DBGS = $(patsubst $(SRCSDIR)/%.c,$(DBGDIR)/%.o,$(SRCS))
 
 $(TARGET): $(OBJS)
-	$(C) $(CFLAGS) $(LFLAGS) $(OBJS) -o $(TARGET)
+	$(C) $(CFLAGS) $(OBJS) $(LFLAGS) -o $(TARGET)
 
 $(OBJSDIR)/%.o : $(SRCSDIR)/%.c
 	mkdir -p $(OBJSDIR)
